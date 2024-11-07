@@ -1,0 +1,132 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #0d1b2a; /* Darker blue background */
+    color: #ffffff; /* White text */
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #1b263b;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Ensures space between title and controls */
+}
+
+#header-controls {
+    display: flex;
+    align-items: center;
+}
+
+#header-controls > * {
+    margin-left: 10px;
+}
+
+h1 {
+    flex: 1;
+    margin: 0;
+}
+
+#login-btn, #new-thread-btn, .reply-btn {
+    background-color: #1e90ff; /* Dodgerblue */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+#username-display {
+    font-weight: bold;
+}
+
+#new-thread-header-btn {
+    background-color: #1e90ff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+#categories-container {
+    padding: 20px;
+}
+
+.category {
+    margin-bottom: 30px;
+}
+
+.category h2 {
+    border-bottom: 1px solid #1e90ff; /* Dodgerblue */
+    padding-bottom: 5px;
+}
+
+.thread {
+    background-color: #1b263b; /* Match header background */
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+}
+
+.thread h3 {
+    margin: 0;
+}
+
+.thread p {
+    margin: 5px 0 0 0;
+}
+
+.message {
+    background-color: #1b263b;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+}
+
+.message .author {
+    font-weight: bold;
+}
+
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1; 
+    padding-top: 100px; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.4); 
+}
+
+.modal-content {
+    background-color: #0d1b2a; /* Match body background */
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #1e90ff; /* Dodgerblue */
+    width: 40%;
+}
+
+.modal-content input[type="text"], .modal-content textarea {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #1b263b; /* Slightly lighter blue */
+    color: #ffffff; /* White text */
+    border: 1px solid #1e90ff; /* Dodgerblue */
+    border-radius: 3px;
+}
+
+.modal-content button {
+    margin-top: 10px;
+}
+
+.close {
+    color: #ffffff; /* White text */
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
