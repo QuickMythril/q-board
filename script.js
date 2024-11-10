@@ -1,6 +1,60 @@
 let userName = null;
 let userAddress = null;
 let categories = {};
+const categoryOptions = [
+    { value: "ART", displayText: "Art and Design" },
+    { value: "AUTOMOTIVE", displayText: "Automotive" },
+    { value: "BEAUTY", displayText: "Beauty" },
+    { value: "BOOKS", displayText: "Books and Reference" },
+    { value: "BUSINESS", displayText: "Business" },
+    { value: "COMMUNICATIONS", displayText: "Communications" },
+    { value: "CRYPTOCURRENCY", displayText: "Cryptocurrency and Blockchain" },
+    { value: "CULTURE", displayText: "Culture" },
+    { value: "DATING", displayText: "Dating" },
+    { value: "DESIGN", displayText: "Design" },
+    { value: "ENTERTAINMENT", displayText: "Entertainment" },
+    { value: "EVENTS", displayText: "Events" },
+    { value: "FAITH", displayText: "Faith and Religion" },
+    { value: "FASHION", displayText: "Fashion" },
+    { value: "FINANCE", displayText: "Finance" },
+    { value: "FOOD", displayText: "Food and Drink" },
+    { value: "GAMING", displayText: "Gaming" },
+    { value: "GEOGRAPHY", displayText: "Geography" },
+    { value: "HEALTH", displayText: "Health" },
+    { value: "HISTORY", displayText: "History" },
+    { value: "HOME", displayText: "Home" },
+    { value: "KNOWLEDGE", displayText: "Knowledge Share" },
+    { value: "LANGUAGE", displayText: "Language" },
+    { value: "LIFESTYLE", displayText: "Lifestyle" },
+    { value: "MANUFACTURING", displayText: "Manufacturing" },
+    { value: "MAPS", displayText: "Maps and Navigation" },
+    { value: "MUSIC", displayText: "Music" },
+    { value: "NEWS", displayText: "News" },
+    { value: "OTHER", displayText: "Other" },
+    { value: "PETS", displayText: "Pets" },
+    { value: "PHILOSOPHY", displayText: "Philosophy" },
+    { value: "PHOTOGRAPHY", displayText: "Photography" },
+    { value: "POLITICS", displayText: "Politics" },
+    { value: "PRODUCE", displayText: "Products and Services" },
+    { value: "PRODUCTIVITY", displayText: "Productivity" },
+    { value: "PSYCHOLOGY", displayText: "Psychology" },
+    { value: "QORTAL", displayText: "Qortal" },
+    { value: "SCIENCE", displayText: "Science" },
+    { value: "SELF_CARE", displayText: "Self Care" },
+    { value: "SELF_SUFFICIENCY", displayText: "Self-Sufficiency and Homesteading" },
+    { value: "SHOPPING", displayText: "Shopping" },
+    { value: "SOCIAL", displayText: "Social" },
+    { value: "SOFTWARE", displayText: "Software" },
+    { value: "SPIRITUALITY", displayText: "Spirituality" },
+    { value: "SPORTS", displayText: "Sports" },
+    { value: "STORYTELLING", displayText: "Storytelling" },
+    { value: "TECHNOLOGY", displayText: "Technology" },
+    { value: "TOOLS", displayText: "Tools" },
+    { value: "TRAVEL", displayText: "Travel" },
+    { value: "UNCATEGORIZED", displayText: "Uncategorized" },
+    { value: "VIDEO", displayText: "Video" },
+    { value: "WEATHER", displayText: "Weather" }
+];
 
 // Function to initialize the app
 async function init() {
@@ -51,7 +105,7 @@ async function loadMessages() {
         const categories = {};
 
         for (const msg of messages) {
-            const category = msg.metadata.category || 'Uncategorized';
+            const category = msg.metadata.category || 'UNCATEGORIZED';
             const identifier = msg.identifier;
             const sequence = parseInt(identifier.slice(-4), 10);
 
@@ -63,8 +117,9 @@ async function loadMessages() {
             if (sequence === 0) {
                 categories[category][identifier] = {
                     identifier: identifier,
-                    subject: msg.metadata.title || 'No Subject',
+                    subject: msg.metadata.title || '(No Subject)',
                     author: msg.name,
+                    category: category,
                     content: '', // Will fetch content
                     replies: []
                 };
@@ -74,7 +129,7 @@ async function loadMessages() {
                 if (categories[category][threadIdentifier]) {
                     categories[category][threadIdentifier].replies.push({
                         identifier: identifier,
-                        subject: msg.metadata.title || 'No Subject',
+                        subject: msg.metadata.title || '(No Subject)',
                         author: msg.name,
                         content: '' // Will fetch content
                     });
@@ -117,6 +172,11 @@ async function loadMessages() {
     }
 }
 
+function getCategoryDisplayName(internalName) {
+    const category = categoryOptions.find(cat => cat.value === internalName);
+    return category ? category.displayText : internalName;
+}
+
 function renderCategories(categories) {
     const categoriesContainer = document.getElementById('categories-container');
     categoriesContainer.innerHTML = '';
@@ -126,7 +186,7 @@ function renderCategories(categories) {
         categoryDiv.classList.add('category');
 
         const categoryTitle = document.createElement('h2');
-        categoryTitle.innerText = categoryName;
+        categoryTitle.innerText = getCategoryDisplayName(categoryName);
 
         categoryDiv.appendChild(categoryTitle);
 
@@ -157,17 +217,17 @@ function renderCategories(categories) {
 
 async function fetchMessageContent(name, identifier) {
     try {
-        const response = await fetch(`/arbitrary/${encodeURIComponent(name)}/COMMENT/${encodeURIComponent(identifier)}`);
+        const response = await fetch(`/arbitrary/COMMENT/${encodeURIComponent(name)}/${encodeURIComponent(identifier)}`);
         if (response.ok) {
-            const content = await response.text();
+            const content = await response.text(); // Correctly parse the response as text
             return content;
         } else {
-            console.error(`Failed to fetch content for ${name} ${identifier}`);
-            return '';
+            console.error(`Failed to fetch content for ${name} ${identifier}: HTTP ${response.status}`);
+            return `Failed to fetch content: HTTP ${response.status}`;
         }
     } catch (error) {
         console.error(`Error fetching message content for ${name} ${identifier}:`, error);
-        return '';
+        return `Error fetching message content: ${error}`;
     }
 }
 
@@ -232,6 +292,7 @@ function createModal() {
 }
 
 // Function to open modal for new thread or reply
+// Updated openModal function
 function openModal(type, category = null, thread = null) {
     const modal = createModal();
     const modalContent = modal.querySelector('.modal-content');
@@ -241,11 +302,28 @@ function openModal(type, category = null, thread = null) {
         modalContent.innerHTML = `
             <span class="close">&times;</span>
             <h3>${titleText}</h3>
-            <input type="text" id="category-input" placeholder="Category" value="${category || ''}">
+            <label for="category-select">Category:</label>
+            <select id="category-select"></select>
             <input type="text" id="subject-input" placeholder="Subject">
             <textarea id="message-input" placeholder="Your message"></textarea>
             <button id="submit-btn">Submit</button>
         `;
+
+        // Populate the category-select
+        const categorySelect = modalContent.querySelector('#category-select');
+        categoryOptions.forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option.value;
+            opt.textContent = option.displayText;
+            categorySelect.appendChild(opt);
+        });
+
+        // Set the selected category if one is passed
+        if (category) {
+            categorySelect.value = category;
+        } else {
+            categorySelect.value = "UNCATEGORIZED";
+        }
     } else if (type === 'reply') {
         modalContent.innerHTML = `
             <span class="close">&times;</span>
@@ -256,19 +334,17 @@ function openModal(type, category = null, thread = null) {
         `;
     }
 
+    // Updated event listener for submit button
     modal.querySelector('#submit-btn').addEventListener('click', () => {
         const subject = document.getElementById('subject-input').value;
         const content = document.getElementById('message-input').value;
 
         if (type === 'thread') {
-            const categoryInput = document.getElementById('category-input').value;
-            submitThread(categoryInput, subject, content);
+            const categorySelect = document.getElementById('category-select').value;
+            submitThread(categorySelect, subject, content);
         } else if (type === 'reply') {
             submitReply(thread, subject, content);
         }
-
-        modal.style.display = 'none';
-        modal.remove();
     });
 
     modal.querySelector('.close').onclick = function() {
@@ -296,7 +372,7 @@ async function submitThread(category, subject, content) {
             service: "COMMENT",
             identifier: identifier,
             file: messageFile,
-            category: category,
+            category: category || "UNCATEGORIZED",
             title: subject
         });
         alert('Thread published successfully!');
@@ -319,7 +395,7 @@ async function submitReply(thread, subject, content) {
             service: "COMMENT",
             identifier: identifier,
             file: messageFile,
-            category: thread.category,
+            category: thread.category || "UNCATEGORIZED",
             title: subject
         });
         alert('Reply published successfully!');
