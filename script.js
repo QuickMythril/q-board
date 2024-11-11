@@ -104,7 +104,7 @@ async function loadMessages() {
         // Get reference to loading feedback element
         const loadingThreads = document.getElementById('loading-threads');
         const loadingReplies = document.getElementById('loading-replies');
-        loadingThreads.innerHTML = 'Loading messages...';
+        loadingThreads.innerHTML = 'Searching for messages...';
         // Use qortalRequest to fetch messages (see modification 3)
         const messages = await qortalRequest({
             action: "SEARCH_QDN_RESOURCES",
@@ -114,11 +114,11 @@ async function loadMessages() {
             includeMetadata: true,
             mode: "ALL"
         });
-        loadingThreads.innerHTML = `Found ${messages.length} messages.`;
+        loadingThreads.innerHTML = `Found ${messages.length} messages.  Loading content...`;
         const loadedNoneMsg = "" + loadingThreads.innerHTML;
         const categories = {};
         for (const msg of messages) {
-            const category = msg.metadata.category || 'UNCATEGORIZED';
+            const category = msg.metadata?.category ? msg.metadata.category : 'UNCATEGORIZED';
             const identifier = msg.identifier;
             const sequence = parseInt(identifier.slice(-4), 10);
             if (!categories[category]) {
@@ -128,7 +128,7 @@ async function loadMessages() {
             if (sequence === 0) {
                 categories[category][identifier] = {
                     identifier: identifier,
-                    subject: msg.metadata.title || '(No Subject)',
+                    subject: msg.metadata?.title ? msg.metadata.title : '(No Subject)',
                     author: msg.name,
                     category: category,
                     content: '', // Will fetch content
@@ -140,7 +140,7 @@ async function loadMessages() {
                 if (categories[category][threadIdentifier]) {
                     categories[category][threadIdentifier].replies.push({
                         identifier: identifier,
-                        subject: msg.metadata.title || '(No Subject)',
+                        subject: msg.metadata?.title ? msg.metadata.title : '(No Subject)',
                         author: msg.name,
                         content: '' // Will fetch content
                     });
@@ -267,8 +267,7 @@ async function fetchMessageContent(name, identifier) {
             action: "FETCH_QDN_RESOURCE",
             name: name,
             service: "COMMENT",
-            identifier: identifier,
-            rebuild: true
+            identifier: identifier
         });
         return content; // Assuming the content is returned as a string
     } catch (error) {
@@ -415,10 +414,6 @@ function openModal(type, category = null, thread = null) {
 
 // Function to submit a new thread
 async function submitThread(category, subject, content) {
-    if (category.length > 64) {
-        category = category.substring(0, 64);
-    }
-
     const identifier = generateIdentifier(subject);
     const messageFile = new Blob([content], { type: 'text/plain' });
 
@@ -435,7 +430,7 @@ async function submitThread(category, subject, content) {
             service: "COMMENT",
             identifier: identifier,
             file: messageFile, // Maximum COMMENT size 500 KB
-            category: category || "UNCATEGORIZED",
+            category: category ? category : "UNCATEGORIZED",
             title: subject
         });
         alert('Thread published successfully!  Confirmation may take several minutes.  Progress can be checked in the Wallet plugin under ARBITRARY txs.  Threads may not appear immediately after confirmation.');
@@ -464,7 +459,7 @@ async function submitReply(thread, subject, content) {
             service: "COMMENT",
             identifier: identifier,
             file: messageFile, // Maximum COMMENT size 500 KB
-            category: thread.category || "UNCATEGORIZED",
+            category: thread.category ? category : "UNCATEGORIZED",
             title: subject
         });
         alert('Reply published successfully!  Confirmation may take several minutes.  Progress can be checked in the Wallet plugin under ARBITRARY txs.  Threads may not appear immediately after confirmation.');
