@@ -163,6 +163,14 @@ async function loadMessages() {
                 const threadContentPromise = fetchMessageContent(thread.author, thread.identifier)
                     .then(content => {
                         thread.content = content;
+                        if (!thread.subject || thread.subject === '(No Subject)' || !thread.category || thread.category === 'UNCATEGORIZED') {
+                            const parsed = parseMessageContent(content);
+                            if (parsed) {
+                                thread.subject = parsed.subject;
+                                thread.category = parsed.category;
+                                thread.content = parsed.message;
+                            }
+                        }
                         loadedThreads++;
                         loadingThreads.innerHTML = `${loadedNoneMsg}<br>Loaded ${loadedThreads} of ${totalThreads} threads. Failed: ${failedThreads}`;
                     })
@@ -177,6 +185,13 @@ async function loadMessages() {
                     const replyContentPromise = fetchMessageContent(reply.author, reply.identifier)
                         .then(content => {
                             reply.content = content;
+                            if (!reply.subject || reply.subject === '(No Subject)') {
+                                const parsed = parseMessageContent(content);
+                                if (parsed) {
+                                    reply.subject = parsed.subject;
+                                    reply.content = parsed.message;
+                                }
+                            }
                             loadedReplies++;
                             loadingReplies.innerHTML = `Loaded ${loadedReplies} of ${totalReplies} replies. Failed: ${failedReplies}`;
                         })
@@ -256,6 +271,24 @@ async function fetchMessageContent(name, identifier) {
     } catch (error) {
         console.error(`Error fetching message content for ${name} ${identifier}:`, error);
         return `Error fetching message content: ${error}`;
+    }
+}
+
+function parseMessageContent(content) {
+    const regex = /^([A-Z_]+):"([^"]+)"; (.*)$/s;
+    const match = content.match(regex);
+    if (match) {
+        const category = match[1];
+        const subject = match[2];
+        const message = match[3];
+        return {
+            category,
+            subject,
+            message
+        };
+    } else {
+        // Content doesn't match the format
+        return null;
     }
 }
 
@@ -382,7 +415,9 @@ function openModal(type, category = null, thread = null) {
 // Function to submit a new thread
 async function submitThread(category, subject, content) {
     const identifier = generateIdentifier(subject);
-    const messageFile = new Blob([content], { type: 'text/plain' });
+    const formattedContent = `${category}:"${subject}"; ${content}`;
+    // Check message size
+    const messageFile = new Blob([formattedContent], { type: 'text/plain' });
     // Check message size
     if (messageFile.size > 500 * 1024) { // 500 KB in bytes
         alert('Message exceeds maximum allowed size of 500 KB.');
@@ -409,7 +444,9 @@ async function submitThread(category, subject, content) {
 // Function to submit a reply
 async function submitReply(thread, subject, content) {
     const identifier = incrementIdentifier(thread.identifier);
-    const messageFile = new Blob([content], { type: 'text/plain' });
+    const formattedContent = `${thread.category}:"${subject}"; ${content}`;
+    // Check message size
+    const messageFile = new Blob([formattedContent], { type: 'text/plain' });
     // Check message size
     if (messageFile.size > 500 * 1024) { // 500 KB in bytes
         alert('Message exceeds maximum allowed size of 500 KB.');
