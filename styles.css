@@ -35,11 +35,12 @@ h1 {
     margin: 0;
 }
 
-#login-btn, #new-thread-btn, .reply-btn {
+#login-btn, #reload-btn, #new-thread-btn, .reply-btn {
     background-color: #1e90ff; /* Dodgerblue */
     color: white;
     border: none;
-    padding: 8px 12px;
+    padding: 4px 6px;
+    font-size: 20px;
     cursor: pointer;
 }
 
@@ -51,7 +52,8 @@ h1 {
     background-color: #1e90ff;
     color: white;
     border: none;
-    padding: 8px 12px;
+    padding: 4px 6px;
+    font-size: 20px;
     cursor: pointer;
 }
 

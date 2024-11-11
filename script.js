@@ -59,6 +59,7 @@ const categoryOptions = [
 // Function to initialize the app
 async function init() {
     document.getElementById('login-btn').addEventListener('click', login);
+    document.getElementById('reload-btn').addEventListener('click', loadMessages);
     // Hide the New Thread button on initialization
     document.getElementById('new-thread-header-btn').style.display = 'none';
 
@@ -98,6 +99,7 @@ async function login() {
 
 // Function to load all existing messages
 async function loadMessages() {
+    dismissLoading(false);
     try {
         // Get reference to loading feedback element
         const loadingThreads = document.getElementById('loading-threads');
@@ -193,10 +195,10 @@ async function loadMessages() {
             }
         }
         await Promise.all(contentPromises);
-        loadingReplies.innerHTML += `<br>Finished loading messages.
-        <br><button id="dismiss-button">Dismiss</button>`;
+        loadingReplies.innerHTML += `<br>Finished loading messages.<br>
+        <button id="dismiss-button">Dismiss</button>`;
         const dismissBtn = document.getElementById('dismiss-button');
-        dismissBtn.addEventListener('click', () => dismissLoading());
+        dismissBtn.addEventListener('click', () => dismissLoading(true));
         // Render categories and threads
         renderCategories(categories);
     } catch (error) {
@@ -204,7 +206,7 @@ async function loadMessages() {
     }
 }
 
-function dismissLoading() {
+function dismissLoading(showBtn) {
     const loadingThreads = document.getElementById('loading-threads');
     const loadingReplies = document.getElementById('loading-replies');
     loadingThreads.innerHTML = '';
