@@ -39,7 +39,7 @@ h1 {
     margin-left: 10px;
 }
 
-#login-btn, #reload-btn, #new-thread-btn, .reply-btn {
+#login-btn, #new-thread-btn, #reload-btn, #submit-btn, .delete-btn, .dismiss-btn, .edit-btn, .reply-btn {
     background-color: #1e90ff; /* Dodgerblue */
     color: white;
     border: none;

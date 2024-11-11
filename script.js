@@ -232,6 +232,7 @@ async function loadMessages() {
         <button id="dismiss-button">Dismiss</button>`;
         const dismissBtn = document.getElementById('dismiss-button');
         dismissBtn.addEventListener('click', () => dismissLoading(true));
+        dismissBtn.classList.add('dismiss-btn');
         // Render categories and threads
         renderCategories(categories);
     } catch (error) {
@@ -349,10 +350,12 @@ function openThread(thread, categoryName) {
     if (userName === thread.author) {
         const editBtn = document.createElement('button');
         editBtn.innerText = 'Edit';
+        editBtn.classList.add('edit-btn');
         editBtn.addEventListener('click', () => editMessage(thread, 'thread'));
         modalContent.appendChild(editBtn);
         const deleteBtn = document.createElement('button');
         deleteBtn.innerText = 'Delete';
+        deleteBtn.classList.add('delete-btn');
         deleteBtn.addEventListener('click', () => deleteMessage(thread, 'thread'));
         modalContent.appendChild(deleteBtn);
     }
@@ -384,10 +387,12 @@ function openThread(thread, categoryName) {
         if (userName === reply.author) {
             const editReplyBtn = document.createElement('button');
             editReplyBtn.innerText = 'Edit';
+            editReplyBtn.classList.add('edit-btn');
             editReplyBtn.addEventListener('click', () => editMessage(reply, 'reply', thread));
             replyDiv.appendChild(editReplyBtn);
             const deleteReplyBtn = document.createElement('button');
             deleteReplyBtn.innerText = 'Delete';
+            deleteReplyBtn.classList.add('delete-btn');
             deleteReplyBtn.addEventListener('click', () => deleteMessage(reply, 'reply', thread));
             replyDiv.appendChild(deleteReplyBtn);
         }
