@@ -21,6 +21,15 @@ header {
     justify-content: space-between; /* Ensures space between title and controls */
 }
 
+h1 {
+    flex: 1;
+    margin: 0;
+}
+
+#categories-container {
+    padding: 20px;
+}
+
 #header-controls {
     display: flex;
     align-items: center;
@@ -28,11 +37,6 @@ header {
 
 #header-controls > * {
     margin-left: 10px;
-}
-
-h1 {
-    flex: 1;
-    margin: 0;
 }
 
 #login-btn, #reload-btn, #new-thread-btn, .reply-btn {
@@ -44,10 +48,6 @@ h1 {
     cursor: pointer;
 }
 
-#username-display {
-    font-weight: bold;
-}
-
 #new-thread-header-btn {
     background-color: #1e90ff;
     color: white;
@@ -57,8 +57,8 @@ h1 {
     cursor: pointer;
 }
 
-#categories-container {
-    padding: 20px;
+#username-display {
+    font-weight: bold;
 }
 
 .category {
@@ -68,6 +68,14 @@ h1 {
 .category h2 {
     border-bottom: 1px solid #1e90ff; /* Dodgerblue */
     padding-bottom: 5px;
+}
+
+.close {
+    color: #ffffff; /* White text */
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
 }
 
 .thread {
@@ -96,6 +104,10 @@ h1 {
     font-weight: bold;
 }
 
+.message-content {
+    white-space: pre-wrap;
+}
+
 .modal {
     display: none; 
     position: fixed; 
@@ -117,6 +129,10 @@ h1 {
     width: 80%;
 }
 
+.modal-content button {
+    margin-top: 10px;
+}
+
 .modal-content input[type="text"], .modal-content textarea {
     width: 100%;
     padding: 10px;
@@ -125,16 +141,4 @@ h1 {
     color: #ffffff; /* White text */
     border: 1px solid #1e90ff; /* Dodgerblue */
     border-radius: 3px;
-}
-
-.modal-content button {
-    margin-top: 10px;
-}
-
-.close {
-    color: #ffffff; /* White text */
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
 }
