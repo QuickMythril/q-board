@@ -267,7 +267,8 @@ async function fetchMessageContent(name, identifier) {
             action: "FETCH_QDN_RESOURCE",
             name: name,
             service: "COMMENT",
-            identifier: identifier
+            identifier: identifier,
+            rebuild: true
         });
         return content; // Assuming the content is returned as a string
     } catch (error) {
