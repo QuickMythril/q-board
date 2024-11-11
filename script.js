@@ -232,6 +232,7 @@ function renderCategories(categories) {
         categoryDiv.appendChild(categoryTitle);
 
         const threads = categories[categoryName];
+        categoryTitle.innerText += ` (${Object.keys(threads).length})`;
 
         for (const threadId in threads) {
             const thread = threads[threadId];
