@@ -123,7 +123,7 @@ async function loadMessages() {
         const loadingThreads = document.getElementById('loading-threads');
         const loadingReplies = document.getElementById('loading-replies');
         loadingThreads.innerHTML = 'Searching for messages...';
-        // Use qortalRequest to fetch messages (see modification 3)
+        // Use qortalRequest to fetch messages
         const messages = await qortalRequest({
             action: "SEARCH_QDN_RESOURCES",
             service: "COMMENT",
@@ -135,16 +135,14 @@ async function loadMessages() {
         loadingThreads.innerHTML = `Found ${messages.length} messages.  Loading content...`;
         const loadedNoneMsg = "" + loadingThreads.innerHTML;
         const categories = {};
+        const threadsMap = {}; // New map to store threads by identifier
         for (const msg of messages) {
             const category = msg.metadata?.category ? msg.metadata.category : 'UNCATEGORIZED';
             const identifier = msg.identifier;
             const sequence = parseInt(identifier.slice(-4), 10);
-            if (!categories[category]) {
-                categories[category] = {};
-            }
             // Threads have sequence '0000'
             if (sequence === 0) {
-                categories[category][identifier] = {
+                const thread = {
                     identifier: identifier,
                     subject: msg.metadata?.title ? msg.metadata.title : '(No Subject)',
                     author: msg.name,
@@ -152,11 +150,17 @@ async function loadMessages() {
                     content: '', // Will fetch content
                     replies: []
                 };
+                threadsMap[identifier] = thread; // Add to threadsMap
+                if (!categories[category]) {
+                    categories[category] = {};
+                }
+                categories[category][identifier] = thread;
             } else {
                 // Replies
                 const threadIdentifier = identifier.slice(0, -4) + '0000';
-                if (categories[category][threadIdentifier]) {
-                    categories[category][threadIdentifier].replies.push({
+                const thread = threadsMap[threadIdentifier]; // Find parent thread without considering category
+                if (thread) {
+                    thread.replies.push({
                         identifier: identifier,
                         subject: msg.metadata?.title ? msg.metadata.title : '(No Subject)',
                         author: msg.name,
