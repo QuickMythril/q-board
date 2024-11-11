@@ -62,7 +62,6 @@ async function init() {
     document.getElementById('reload-btn').addEventListener('click', loadMessages);
     // Hide the New Thread button on initialization
     document.getElementById('new-thread-header-btn').style.display = 'none';
-
     loadMessages();
 }
 
@@ -74,20 +73,16 @@ async function login() {
             action: "GET_ACCOUNT_NAMES",
             address: account.address
         });
-
         if (response.length > 0) {
             userName = response[0].name;
             userAddress = account.address;
             document.getElementById('username-display').innerText = `Logged in as: ${userName}`;
             document.getElementById('login-btn').style.display = 'none';
-
             // Show the New Thread button in the header
             const newThreadHeaderBtn = document.getElementById('new-thread-header-btn');
             newThreadHeaderBtn.style.display = 'inline-block';
-
             // Add event listener to the New Thread button
             newThreadHeaderBtn.addEventListener('click', () => openModal('thread'));
-
         } else {
             alert('You do not have a registered name.');
         }
@@ -221,42 +216,30 @@ function getCategoryDisplayName(internalName) {
 function renderCategories(categories) {
     const categoriesContainer = document.getElementById('categories-container');
     categoriesContainer.innerHTML = '';
-
     for (const categoryName in categories) {
         const categoryDiv = document.createElement('div');
         categoryDiv.classList.add('category');
-
         const categoryTitle = document.createElement('h2');
         categoryTitle.innerText = getCategoryDisplayName(categoryName);
-
         categoryDiv.appendChild(categoryTitle);
-
         const threads = categories[categoryName];
         categoryTitle.innerText += ` (${Object.keys(threads).length})`;
-
         for (const threadId in threads) {
             const thread = threads[threadId];
-
             const threadDiv = document.createElement('div');
             threadDiv.classList.add('thread');
-
             const threadTitle = document.createElement('h3');
             threadTitle.innerText = thread.subject;
-
             const threadAuthor = document.createElement('p');
             threadAuthor.innerText = `By: ${thread.author}`;
-
             const threadReplies = document.createElement('p');
             threadReplies.innerText = `Replies: ${thread.replies.length}`;
-
             threadDiv.appendChild(threadTitle);
             threadDiv.appendChild(threadAuthor);
             threadDiv.appendChild(threadReplies);
             threadDiv.addEventListener('click', () => openThread(thread, categoryName));
-
             categoryDiv.appendChild(threadDiv);
         }
-
         categoriesContainer.appendChild(categoryDiv);
     }
 }
@@ -279,7 +262,6 @@ async function fetchMessageContent(name, identifier) {
 // Function to open a thread and display replies
 function openThread(thread, categoryName) {
     const modal = createModal();
-
     const modalContent = modal.querySelector('.modal-content');
     modalContent.innerHTML = `
         <span class="close">&times;</span>
@@ -288,7 +270,6 @@ function openThread(thread, categoryName) {
         <p>${thread.content}</p>
         <h4>Replies:</h4>
     `;
-
     thread.replies.forEach(reply => {
         const replyDiv = document.createElement('div');
         replyDiv.classList.add('message');
@@ -305,7 +286,6 @@ function openThread(thread, categoryName) {
 
         modalContent.appendChild(replyDiv);
     });
-
     if (userName) {
         const replyBtn = document.createElement('button');
         replyBtn.innerText = 'New Reply';
@@ -313,10 +293,8 @@ function openThread(thread, categoryName) {
         replyBtn.addEventListener('click', () => openModal('reply', categoryName, thread));
         modalContent.appendChild(replyBtn);
     }
-
     document.body.appendChild(modal);
     modal.style.display = 'block';
-
     modal.querySelector('.close').onclick = function() {
         modal.style.display = 'none';
         modal.remove();
@@ -327,12 +305,9 @@ function openThread(thread, categoryName) {
 function createModal() {
     const modalDiv = document.createElement('div');
     modalDiv.classList.add('modal');
-
     const modalContentDiv = document.createElement('div');
     modalContentDiv.classList.add('modal-content');
-
     modalDiv.appendChild(modalContentDiv);
-
     return modalDiv;
 }
 
@@ -341,7 +316,6 @@ function openModal(type, category = null, thread = null) {
     const modal = createModal();
     const modalContent = modal.querySelector('.modal-content');
     let titleText = type === 'thread' ? 'New Thread' : 'New Reply';
-
     if (type === 'thread') {
         modalContent.innerHTML = `
             <span class="close">&times;</span>
@@ -353,7 +327,6 @@ function openModal(type, category = null, thread = null) {
             <div id="size-feedback">0 KB / 500 KB</div> <!-- Added size feedback div -->
             <button id="submit-btn">Submit</button>
         `;
-
         // Populate the category-select
         const categorySelect = modalContent.querySelector('#category-select');
         categoryOptions.forEach(option => {
@@ -362,7 +335,6 @@ function openModal(type, category = null, thread = null) {
             opt.textContent = option.displayText;
             categorySelect.appendChild(opt);
         });
-
         // Set the selected category if one is passed
         if (category) {
             categorySelect.value = category;
@@ -379,17 +351,14 @@ function openModal(type, category = null, thread = null) {
             <button id="submit-btn">Submit</button>
         `;
     }
-
     // Add event listener to update size feedback
     const messageInput = modalContent.querySelector('#message-input');
     const sizeFeedback = modalContent.querySelector('#size-feedback');
-
     messageInput.addEventListener('input', () => {
         const contentLength = new Blob([messageInput.value]).size; // Size in bytes
         const sizeInKB = Math.ceil(contentLength / 1024); // Convert bytes to KB, round up
         sizeFeedback.textContent = `${sizeInKB} KB / 500 KB`;
     });
-
     // Updated event listener for submit button
     modal.querySelector('#submit-btn').addEventListener('click', () => {
         const subject = document.getElementById('subject-input').value;
@@ -402,12 +371,10 @@ function openModal(type, category = null, thread = null) {
             submitReply(thread, subject, content);
         }
     });
-
     modal.querySelector('.close').onclick = function() {
         modal.style.display = 'none';
         modal.remove();
     };
-
     document.body.appendChild(modal);
     modal.style.display = 'block';
 }
@@ -416,13 +383,11 @@ function openModal(type, category = null, thread = null) {
 async function submitThread(category, subject, content) {
     const identifier = generateIdentifier(subject);
     const messageFile = new Blob([content], { type: 'text/plain' });
-
     // Check message size
     if (messageFile.size > 500 * 1024) { // 500 KB in bytes
         alert('Message exceeds maximum allowed size of 500 KB.');
         return;
     }
-
     try {
         await qortalRequest({
             action: "PUBLISH_QDN_RESOURCE",
@@ -445,13 +410,11 @@ async function submitThread(category, subject, content) {
 async function submitReply(thread, subject, content) {
     const identifier = incrementIdentifier(thread.identifier);
     const messageFile = new Blob([content], { type: 'text/plain' });
-
     // Check message size
     if (messageFile.size > 500 * 1024) { // 500 KB in bytes
         alert('Message exceeds maximum allowed size of 500 KB.');
         return;
     }
-
     try {
         const response = await qortalRequest({
             action: "PUBLISH_QDN_RESOURCE",
@@ -472,19 +435,17 @@ async function submitReply(thread, subject, content) {
 
 // Function to generate a unique identifier
 function generateIdentifier(subject) {
-    const simplifiedSubject = subject.replace(/\s+/g, '').toLowerCase();
+    // simplifiedSubject should be only letters and numbers, no spaces or other symbols
+    const simplifiedSubject = subject.replace(/[^a-z0-9]/gi, '').toLowerCase();
     const randomString = Math.random().toString(36).substring(2, 8);
     const sequence = '0000';
-
     // Calculate fixed length parts: 'qboard-', '-', randomString, '-', sequence
     const fixedLength = 'qboard-'.length + '-' + randomString.length + '-' + sequence.length; // 7 + 1 + 6 + 1 + 4 = 19
     const maxSubjectLength = 64 - fixedLength;
-
     let truncatedSubject = simplifiedSubject;
     if (simplifiedSubject.length > maxSubjectLength) {
         truncatedSubject = simplifiedSubject.substring(0, maxSubjectLength);
     }
-
     const identifier = `qboard-${truncatedSubject}-${randomString}-${sequence}`;
     return identifier;
 }
@@ -495,7 +456,6 @@ function incrementIdentifier(identifier) {
     const sequence = parseInt(parts[parts.length - 1], 10) + 1;
     parts[parts.length - 1] = sequence.toString().padStart(4, '0');
     const newIdentifier = parts.join('-');
-
     if (newIdentifier.length > 64) {
         return newIdentifier.substring(0, 64);
     }
