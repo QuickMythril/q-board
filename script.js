@@ -99,20 +99,29 @@ async function login() {
 // Function to load all existing messages
 async function loadMessages() {
     try {
-        const response = await fetch(`/arbitrary/resources/search?service=COMMENT&identifier=qboard&prefix=true&mode=ALL&includemetadata=true`);
-        const messages = await response.json();
-
+        // Get reference to loading feedback element
+        const loadingThreads = document.getElementById('loading-threads');
+        const loadingReplies = document.getElementById('loading-replies');
+        loadingThreads.innerHTML = 'Loading messages...';
+        // Use qortalRequest to fetch messages (see modification 3)
+        const messages = await qortalRequest({
+            action: "SEARCH_QDN_RESOURCES",
+            service: "COMMENT",
+            identifier: "qboard",
+            prefix: true,
+            includeMetadata: true,
+            mode: "ALL"
+        });
+        loadingThreads.innerHTML = `Found ${messages.length} messages.`;
+        const loadedNoneMsg = "" + loadingThreads.innerHTML;
         const categories = {};
-
         for (const msg of messages) {
             const category = msg.metadata.category || 'UNCATEGORIZED';
             const identifier = msg.identifier;
             const sequence = parseInt(identifier.slice(-4), 10);
-
             if (!categories[category]) {
                 categories[category] = {};
             }
-
             // Threads have sequence '0000'
             if (sequence === 0) {
                 categories[category][identifier] = {
@@ -136,40 +145,70 @@ async function loadMessages() {
                 }
             }
         }
-
-        // Fetch content for all messages
+        let totalThreads = 0;
+        let totalReplies = 0;
+        // Calculate total messages to fetch
+        for (const category in categories) {
+            for (const threadId in categories[category]) {
+                totalThreads += 1; // For thread
+                totalReplies += categories[category][threadId].replies.length; // For replies
+            }
+        }
+        let loadedThreads = 0;
+        let failedThreads = 0;
+        let loadedReplies = 0;
+        let failedReplies = 0;
         const contentPromises = [];
-
+        // Fetch content for all messages with progress updates
         for (const category in categories) {
             for (const threadId in categories[category]) {
                 const thread = categories[category][threadId];
-                // Fetch thread content
                 const threadContentPromise = fetchMessageContent(thread.author, thread.identifier)
                     .then(content => {
                         thread.content = content;
+                        loadedThreads++;
+                        loadingThreads.innerHTML = `${loadedNoneMsg}<br>Loaded ${loadedThreads} of ${totalThreads} threads. Failed: ${failedThreads}`;
+                    })
+                    .catch(error => {
+                        thread.content = `Error loading content: ${error}`;
+                        failedThreads++;
+                        loadingThreads.innerHTML = `${loadedNoneMsg}<br>Loaded ${loadedThreads} of ${totalThreads} threads. Failed: ${failedThreads}`;
                     });
-
                 contentPromises.push(threadContentPromise);
-
                 // Fetch replies content
                 for (const reply of thread.replies) {
                     const replyContentPromise = fetchMessageContent(reply.author, reply.identifier)
                         .then(content => {
                             reply.content = content;
+                            loadedReplies++;
+                            loadingReplies.innerHTML = `Loaded ${loadedReplies} of ${totalReplies} replies. Failed: ${failedReplies}`;
+                        })
+                        .catch(error => {
+                            reply.content = `Error loading content: ${error}`;
+                            failedReplies++;
+                            loadingReplies.innerHTML = `Loaded ${loadedReplies} of ${totalReplies} replies. Failed: ${failedReplies}`;
                         });
                     contentPromises.push(replyContentPromise);
                 }
             }
         }
-
         await Promise.all(contentPromises);
-
+        loadingReplies.innerHTML += `<br>Finished loading messages.
+        <br><button id="dismiss-button">Dismiss</button>`;
+        const dismissBtn = document.getElementById('dismiss-button');
+        dismissBtn.addEventListener('click', () => dismissLoading());
         // Render categories and threads
         renderCategories(categories);
-
     } catch (error) {
         console.error('Error loading messages:', error);
     }
+}
+
+function dismissLoading() {
+    const loadingThreads = document.getElementById('loading-threads');
+    const loadingReplies = document.getElementById('loading-replies');
+    loadingThreads.innerHTML = '';
+    loadingReplies.innerHTML = '';
 }
 
 function getCategoryDisplayName(internalName) {
@@ -204,8 +243,12 @@ function renderCategories(categories) {
             const threadAuthor = document.createElement('p');
             threadAuthor.innerText = `By: ${thread.author}`;
 
+            const threadReplies = document.createElement('p');
+            threadReplies.innerText = `Replies: ${thread.replies.length}`;
+
             threadDiv.appendChild(threadTitle);
             threadDiv.appendChild(threadAuthor);
+            threadDiv.appendChild(threadReplies);
             threadDiv.addEventListener('click', () => openThread(thread, categoryName));
 
             categoryDiv.appendChild(threadDiv);
@@ -217,14 +260,13 @@ function renderCategories(categories) {
 
 async function fetchMessageContent(name, identifier) {
     try {
-        const response = await fetch(`/arbitrary/COMMENT/${encodeURIComponent(name)}/${encodeURIComponent(identifier)}`);
-        if (response.ok) {
-            const content = await response.text(); // Correctly parse the response as text
-            return content;
-        } else {
-            console.error(`Failed to fetch content for ${name} ${identifier}: HTTP ${response.status}`);
-            return `Failed to fetch content: HTTP ${response.status}`;
-        }
+        const content = await qortalRequest({
+            action: "FETCH_QDN_RESOURCE",
+            name: name,
+            service: "COMMENT",
+            identifier: identifier
+        });
+        return content; // Assuming the content is returned as a string
     } catch (error) {
         console.error(`Error fetching message content for ${name} ${identifier}:`, error);
         return `Error fetching message content: ${error}`;
@@ -292,7 +334,6 @@ function createModal() {
 }
 
 // Function to open modal for new thread or reply
-// Updated openModal function
 function openModal(type, category = null, thread = null) {
     const modal = createModal();
     const modalContent = modal.querySelector('.modal-content');
@@ -305,7 +346,8 @@ function openModal(type, category = null, thread = null) {
             <label for="category-select">Category:</label>
             <select id="category-select"></select>
             <input type="text" id="subject-input" placeholder="Subject">
-            <textarea id="message-input" placeholder="Your message"></textarea>
+            <textarea id="message-input" placeholder="Your message (Max 500 KB)"></textarea>
+            <div id="size-feedback">0 KB / 500 KB</div> <!-- Added size feedback div -->
             <button id="submit-btn">Submit</button>
         `;
 
@@ -329,10 +371,21 @@ function openModal(type, category = null, thread = null) {
             <span class="close">&times;</span>
             <h3>${titleText}</h3>
             <input type="text" id="subject-input" placeholder="Subject" value="Re: ${thread.subject}">
-            <textarea id="message-input" placeholder="Your message"></textarea>
+            <textarea id="message-input" placeholder="Your message (Max 500 KB)"></textarea>
+            <div id="size-feedback">0 KB / 500 KB</div> <!-- Added size feedback div -->
             <button id="submit-btn">Submit</button>
         `;
     }
+
+    // Add event listener to update size feedback
+    const messageInput = modalContent.querySelector('#message-input');
+    const sizeFeedback = modalContent.querySelector('#size-feedback');
+
+    messageInput.addEventListener('input', () => {
+        const contentLength = new Blob([messageInput.value]).size; // Size in bytes
+        const sizeInKB = Math.ceil(contentLength / 1024); // Convert bytes to KB, round up
+        sizeFeedback.textContent = `${sizeInKB} KB / 500 KB`;
+    });
 
     // Updated event listener for submit button
     modal.querySelector('#submit-btn').addEventListener('click', () => {
@@ -365,13 +418,19 @@ async function submitThread(category, subject, content) {
     const identifier = generateIdentifier(subject);
     const messageFile = new Blob([content], { type: 'text/plain' });
 
+    // Check message size
+    if (messageFile.size > 500 * 1024) { // 500 KB in bytes
+        alert('Message exceeds maximum allowed size of 500 KB.');
+        return;
+    }
+
     try {
         await qortalRequest({
             action: "PUBLISH_QDN_RESOURCE",
             name: userName,
             service: "COMMENT",
             identifier: identifier,
-            file: messageFile,
+            file: messageFile, // Maximum COMMENT size 500 KB
             category: category || "UNCATEGORIZED",
             title: subject
         });
@@ -388,13 +447,19 @@ async function submitReply(thread, subject, content) {
     const identifier = incrementIdentifier(thread.identifier);
     const messageFile = new Blob([content], { type: 'text/plain' });
 
+    // Check message size
+    if (messageFile.size > 500 * 1024) { // 500 KB in bytes
+        alert('Message exceeds maximum allowed size of 500 KB.');
+        return;
+    }
+
     try {
         const response = await qortalRequest({
             action: "PUBLISH_QDN_RESOURCE",
             name: userName,
             service: "COMMENT",
             identifier: identifier,
-            file: messageFile,
+            file: messageFile, // Maximum COMMENT size 500 KB
             category: thread.category || "UNCATEGORIZED",
             title: subject
         });
