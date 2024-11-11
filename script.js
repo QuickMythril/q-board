@@ -301,8 +301,12 @@ function openThread(thread, categoryName) {
         <h3>${thread.subject}</h3>
         <p class="author">By: ${thread.author}</p>
         <p>${thread.content}</p>
-        <h4>Replies:</h4>
     `;
+    if (thread.replies.length > 0) {
+        modalContent.innerHTML += `<h4>Replies:</h4>`;
+    } else {
+        modalContent.innerHTML += `<h4>No Replies</h4>`;
+    }
     thread.replies.forEach(reply => {
         const replyDiv = document.createElement('div');
         replyDiv.classList.add('message');
@@ -324,7 +328,7 @@ function openThread(thread, categoryName) {
         replyBtn.innerText = 'New Reply';
         replyBtn.classList.add('reply-btn');
         replyBtn.addEventListener('click', () => openModal('reply', categoryName, thread));
-        modalContent.appendChild(replyBtn);
+        modalContent.insertBefore(replyBtn, modalContent.firstChild);
     }
     document.body.appendChild(modal);
     modal.style.display = 'block';
