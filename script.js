@@ -58,10 +58,33 @@ const categoryOptions = [
 
 // Function to initialize the app
 async function init() {
+    try {
+        const account = await qortalRequest({ action: "GET_USER_ACCOUNT" });
+        const response = await qortalRequest({
+            action: "GET_ACCOUNT_NAMES",
+            address: account.address
+        });
+        if (response.length > 0) {
+            userName = response[0].name;
+            userAddress = account.address;
+            document.getElementById('username-display').innerText = `Logged in as: ${userName}`;
+            document.getElementById('login-btn').style.display = 'none';
+            // Show the New Thread button in the header
+            const newThreadHeaderBtn = document.getElementById('new-thread-header-btn');
+            newThreadHeaderBtn.style.display = 'inline-block';
+            // Add event listener to the New Thread button
+            newThreadHeaderBtn.addEventListener('click', () => openModal('thread'));
+        }
+    } catch (error) {
+        // User not logged in
+        console.log('User not logged in');
+    }
     document.getElementById('login-btn').addEventListener('click', login);
     document.getElementById('reload-btn').addEventListener('click', loadMessages);
-    // Hide the New Thread button on initialization
-    document.getElementById('new-thread-header-btn').style.display = 'none';
+    // Hide the New Thread button on initialization if userName is not set
+    if (!userName) {
+        document.getElementById('new-thread-header-btn').style.display = 'none';
+    }
     loadMessages();
 }
 
@@ -296,17 +319,59 @@ function parseMessageContent(content) {
 function openThread(thread, categoryName) {
     const modal = createModal();
     const modalContent = modal.querySelector('.modal-content');
-    modalContent.innerHTML = `
-        <span class="close">&times;</span>
-        <h3>${thread.subject}</h3>
-        <p class="author">By: ${thread.author}</p>
-        <p>${thread.content}</p>
-    `;
-    if (thread.replies.length > 0) {
-        modalContent.innerHTML += `<h4>Replies:</h4>`;
-    } else {
-        modalContent.innerHTML += `<h4>No Replies</h4>`;
+    // Close button
+    const closeBtn = document.createElement('span');
+    closeBtn.classList.add('close');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = function() {
+        modal.style.display = 'none';
+        modal.remove();
+    };
+    modalContent.appendChild(closeBtn);
+    // New Reply button
+    if (userName) {
+        const replyBtn = document.createElement('button');
+        replyBtn.innerText = 'New Reply';
+        replyBtn.classList.add('reply-btn');
+        replyBtn.addEventListener('click', () => openModal('reply', categoryName, thread));
+        modalContent.appendChild(replyBtn);
     }
+    // Thread title
+    const threadTitle = document.createElement('h3');
+    threadTitle.innerText = thread.subject;
+    modalContent.appendChild(threadTitle);
+    // Thread author
+    const threadAuthor = document.createElement('p');
+    threadAuthor.classList.add('author');
+    threadAuthor.innerText = `By: ${thread.author}`;
+    modalContent.appendChild(threadAuthor);
+    // Edit and Delete buttons if user is the author
+    if (userName === thread.author) {
+        const editBtn = document.createElement('button');
+        editBtn.innerText = 'Edit';
+        editBtn.addEventListener('click', () => editMessage(thread, 'thread'));
+        modalContent.appendChild(editBtn);
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerText = 'Delete';
+        deleteBtn.addEventListener('click', () => deleteMessage(thread, 'thread'));
+        modalContent.appendChild(deleteBtn);
+    }
+    // Thread content
+    const threadContent = document.createElement('p');
+    threadContent.classList.add('message-content');
+    threadContent.innerText = thread.content;
+    modalContent.appendChild(threadContent);
+    // Replies section
+    if (thread.replies.length > 0) {
+        const repliesTitle = document.createElement('h4');
+        repliesTitle.innerText = 'Replies:';
+        modalContent.appendChild(repliesTitle);
+    } else {
+        const noRepliesTitle = document.createElement('h4');
+        noRepliesTitle.innerText = 'No Replies';
+        modalContent.appendChild(noRepliesTitle);
+    }
+    // Display replies
     thread.replies.forEach(reply => {
         const replyDiv = document.createElement('div');
         replyDiv.classList.add('message');
@@ -314,28 +379,28 @@ function openThread(thread, categoryName) {
         const replyAuthor = document.createElement('p');
         replyAuthor.classList.add('author');
         replyAuthor.innerText = `By: ${reply.author}`;
+        replyDiv.appendChild(replyAuthor);
+        // Edit and Delete buttons for replies
+        if (userName === reply.author) {
+            const editReplyBtn = document.createElement('button');
+            editReplyBtn.innerText = 'Edit';
+            editReplyBtn.addEventListener('click', () => editMessage(reply, 'reply', thread));
+            replyDiv.appendChild(editReplyBtn);
+            const deleteReplyBtn = document.createElement('button');
+            deleteReplyBtn.innerText = 'Delete';
+            deleteReplyBtn.addEventListener('click', () => deleteMessage(reply, 'reply', thread));
+            replyDiv.appendChild(deleteReplyBtn);
+        }
 
         const replyContent = document.createElement('p');
+        replyContent.classList.add('message-content');
         replyContent.innerText = reply.content;
-
-        replyDiv.appendChild(replyAuthor);
         replyDiv.appendChild(replyContent);
 
         modalContent.appendChild(replyDiv);
     });
-    if (userName) {
-        const replyBtn = document.createElement('button');
-        replyBtn.innerText = 'New Reply';
-        replyBtn.classList.add('reply-btn');
-        replyBtn.addEventListener('click', () => openModal('reply', categoryName, thread));
-        modalContent.insertBefore(replyBtn, modalContent.firstChild);
-    }
     document.body.appendChild(modal);
     modal.style.display = 'block';
-    modal.querySelector('.close').onclick = function() {
-        modal.style.display = 'none';
-        modal.remove();
-    };
 }
 
 // Function to create a modal
@@ -472,6 +537,121 @@ async function submitReply(thread, subject, content) {
         console.error(error);
         alert('Error publishing reply.  Please retry or cancel.');
     }
+}
+
+// Function to handle deleting a message
+function deleteMessage(message, type) {
+    if (!confirm('Are you sure you want to delete this message?')) {
+        return;
+    }
+    const identifier = message.identifier;
+    const category = message.category ? message.category : 'UNCATEGORIZED';
+    const name = userName;
+    const service = 'COMMENT';
+    const deletedContent = 'deleted';
+    const deletedSubject = 'deleted';
+    const formattedContent = `${category}:"${deletedSubject}"; ${deletedContent}`;
+    const messageFile = new Blob([formattedContent], { type: 'text/plain' });
+    qortalRequest({
+        action: "PUBLISH_QDN_RESOURCE",
+        name: name,
+        service: service,
+        identifier: identifier,
+        file: messageFile,
+        category: category,
+        title: deletedSubject
+    }).then(() => {
+        alert('Message deleted successfully!');
+        loadMessages();
+    }).catch(error => {
+        console.error(error);
+        alert('Error deleting message.');
+    });
+}
+
+// Function to handle editing a message
+function editMessage(message, type, thread) {
+    // Open a modal populated with current message details
+    const modal = createModal();
+    const modalContent = modal.querySelector('.modal-content');
+    const titleText = 'Edit Message';
+    modalContent.innerHTML = `
+        <span class="close">&times;</span>
+        <h3>${titleText}</h3>
+        <label for="category-select">Category:</label>
+        <select id="category-select"></select>
+        <input type="text" id="subject-input" placeholder="Subject">
+        <textarea id="message-input" placeholder="Your message (Max 500 KB)"></textarea>
+        <div id="size-feedback">0 KB / 500 KB</div>
+        <button id="submit-btn">Submit</button>
+    `;
+    // Populate the category-select
+    const categorySelect = modalContent.querySelector('#category-select');
+    categoryOptions.forEach(option => {
+        const opt = document.createElement('option');
+        opt.value = option.value;
+        opt.textContent = option.displayText;
+        categorySelect.appendChild(opt);
+    });
+    // Set the selected category
+    categorySelect.value = message.category ? message.category : 'UNCATEGORIZED';
+    // Set the subject and message
+    const subjectInput = modalContent.querySelector('#subject-input');
+    subjectInput.value = message.subject;
+    const messageInput = modalContent.querySelector('#message-input');
+    messageInput.value = message.content;
+    // Add event listener to update size feedback
+    const sizeFeedback = modalContent.querySelector('#size-feedback');
+    messageInput.addEventListener('input', () => {
+        const contentLength = new Blob([messageInput.value]).size;
+        const sizeInKB = Math.ceil(contentLength / 1024);
+        sizeFeedback.textContent = `${sizeInKB} KB / 500 KB`;
+    });
+    // Initialize size feedback
+    const initialContentLength = new Blob([messageInput.value]).size;
+    const initialSizeInKB = Math.ceil(initialContentLength / 1024);
+    sizeFeedback.textContent = `${initialSizeInKB} KB / 500 KB`;
+    modalContent.querySelector('#submit-btn').addEventListener('click', () => {
+        const newSubject = subjectInput.value;
+        const newContent = messageInput.value;
+        const newCategory = categorySelect.value;
+        submitEdit(message, newCategory, newSubject, newContent);
+        // modal.style.display = 'none';
+        // modal.remove();
+    });
+    modalContent.querySelector('.close').onclick = function() {
+        modal.style.display = 'none';
+        modal.remove();
+    };
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+}
+
+// Function to submit the edited message
+function submitEdit(message, category, subject, content) {
+    const identifier = message.identifier;
+    const formattedContent = `${category}:"${subject}"; ${content}`;
+    const messageFile = new Blob([formattedContent], { type: 'text/plain' });
+    // Check message size
+    if (messageFile.size > 500 * 1024) { // 500 KB
+        alert('Message exceeds maximum allowed size of 500 KB.');
+        return;
+    }
+    qortalRequest({
+        action: "PUBLISH_QDN_RESOURCE",
+        name: userName,
+        service: "COMMENT",
+        identifier: identifier,
+        file: messageFile,
+        category: category,
+        title: subject
+    }).then(() => {
+        alert('Message edited successfully!');
+        loadMessages();
+    }).catch(error => {
+        console.error(error);
+        alert('Error editing message.');
+    });
 }
 
 // Function to generate a unique identifier
