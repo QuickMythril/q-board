@@ -375,11 +375,11 @@ async function submitThread(category, subject, content) {
             category: category || "UNCATEGORIZED",
             title: subject
         });
-        alert('Thread published successfully!');
+        alert('Thread published successfully!  Confirmation may take several minutes.  Progress can be checked in the Wallet plugin under ARBITRARY txs.  Threads may not appear immediately after confirmation.');
         loadMessages();
     } catch (error) {
         console.error(error);
-        alert('Error publishing thread.');
+        alert('Error publishing thread.  Please retry or cancel.');
     }
 }
 
@@ -398,11 +398,11 @@ async function submitReply(thread, subject, content) {
             category: thread.category || "UNCATEGORIZED",
             title: subject
         });
-        alert('Reply published successfully!');
+        alert('Reply published successfully!  Confirmation may take several minutes.  Progress can be checked in the Wallet plugin under ARBITRARY txs.  Threads may not appear immediately after confirmation.');
         loadMessages();
     } catch (error) {
         console.error(error);
-        alert('Error publishing reply.');
+        alert('Error publishing reply.  Please retry or cancel.');
     }
 }
 
