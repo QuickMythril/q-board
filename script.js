@@ -189,14 +189,13 @@ async function loadMessages() {
                 const thread = categories[category][threadId];
                 const threadContentPromise = fetchMessageContent(thread.author, thread.identifier)
                     .then(content => {
-                        thread.content = content;
-                        if (!thread.subject || thread.subject === '(No Subject)' || !thread.category || thread.category === 'UNCATEGORIZED') {
-                            const parsed = parseMessageContent(content);
-                            if (parsed) {
-                                thread.subject = parsed.subject;
-                                thread.category = parsed.category;
-                                thread.content = parsed.message;
-                            }
+                        const parsed = parseMessageContent(content);
+                        if (parsed) {
+                            thread.subject = parsed.subject;
+                            thread.category = parsed.category;
+                            thread.content = parsed.message;
+                        } else {
+                            thread.content = content; // Use original content if parsing fails
                         }
                         loadedThreads++;
                         loadingThreads.innerHTML = `${loadedNoneMsg}<br>Loaded ${loadedThreads} of ${totalThreads} threads. Failed: ${failedThreads}`;
@@ -211,13 +210,12 @@ async function loadMessages() {
                 for (const reply of thread.replies) {
                     const replyContentPromise = fetchMessageContent(reply.author, reply.identifier)
                         .then(content => {
-                            reply.content = content;
-                            if (!reply.subject || reply.subject === '(No Subject)') {
-                                const parsed = parseMessageContent(content);
-                                if (parsed) {
-                                    reply.subject = parsed.subject;
-                                    reply.content = parsed.message;
-                                }
+                            const parsed = parseMessageContent(content);
+                            if (parsed) {
+                                reply.subject = parsed.subject;
+                                reply.content = parsed.message;
+                            } else {
+                                reply.content = content; // Use original content if parsing fails
                             }
                             loadedReplies++;
                             loadingReplies.innerHTML = `Loaded ${loadedReplies} of ${totalReplies} replies. Failed: ${failedReplies}`;
@@ -303,7 +301,7 @@ async function fetchMessageContent(name, identifier) {
 }
 
 function parseMessageContent(content) {
-    const regex = /^([A-Z_]+):"([^"]+)"; (.*)$/s;
+    const regex = /^([A-Z_]+):"([^"]+)";\s*(.*)$/is;
     const match = content.match(regex);
     if (match) {
         const category = match[1];
