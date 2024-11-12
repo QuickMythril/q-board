@@ -729,8 +729,8 @@ function generateIdentifier(subject) {
     const randomString = Math.random().toString(36).substring(2, 8);
     const sequence = '0000';
     // Calculate fixed length parts: 'qboard-', '-', randomString, '-', sequence
-    const fixedLength = 'qboard-'.length + '-' + randomString.length + '-' + sequence.length; // 7 + 1 + 6 + 1 + 4 = 19
-    const maxSubjectLength = 64 - fixedLength;
+    const fixedLength = 'qboard-'.length + '-'.length + randomString.length + '-'.length + sequence.length; // 7 + 1 + 6 + 1 + 4 = 19
+    const maxSubjectLength = 64 - fixedLength; // 45
     let truncatedSubject = simplifiedSubject;
     if (simplifiedSubject.length > maxSubjectLength) {
         truncatedSubject = simplifiedSubject.substring(0, maxSubjectLength);
