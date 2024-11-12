@@ -70,6 +70,20 @@ h1 {
     padding-bottom: 5px;
 }
 
+/* Category header hover effect */
+.category-header {
+    cursor: pointer;
+}
+
+.category-header h2 {
+    margin: 0;
+}
+
+.category-header:hover h2 {
+    color: dodgerblue;
+    text-decoration: underline;
+}
+
 .close {
     color: #ffffff; /* White text */
     float: right;

@@ -148,7 +148,9 @@ async function loadMessages() {
                     author: msg.name,
                     category: category,
                     content: '', // Will fetch content
-                    replies: []
+                    replies: [],
+                    created: msg.created,
+                    updated: msg.updated
                 };
                 threadsMap[identifier] = thread; // Add to threadsMap
                 if (!categories[category]) {
@@ -164,11 +166,21 @@ async function loadMessages() {
                         identifier: identifier,
                         subject: msg.metadata?.title ? msg.metadata.title : '(No Subject)',
                         author: msg.name,
-                        content: '' // Will fetch content
+                        content: '', // Will fetch content
+                        created: msg.created,
+                        updated: msg.updated
                     });
                 }
             }
         }
+        // After building the categories object
+        const categoriesArray = Object.keys(categories).map(categoryName => ({
+            name: categoryName,
+            threads: categories[categoryName],
+            threadCount: Object.keys(categories[categoryName]).length
+        }));
+        // Sort categories by thread count (descending order)
+        categoriesArray.sort((a, b) => b.threadCount - a.threadCount);
         let totalThreads = 0;
         let totalReplies = 0;
         // Calculate total messages to fetch
@@ -236,7 +248,7 @@ async function loadMessages() {
         dismissBtn.addEventListener('click', () => dismissLoading(true));
         dismissBtn.classList.add('dismiss-btn');
         // Render categories and threads
-        renderCategories(categories);
+        renderCategories(categoriesArray);
     } catch (error) {
         console.error('Error loading messages:', error);
     }
@@ -254,17 +266,26 @@ function getCategoryDisplayName(internalName) {
     return category ? category.displayText : internalName;
 }
 
-function renderCategories(categories) {
+function renderCategories(categoriesArray) {
     const categoriesContainer = document.getElementById('categories-container');
     categoriesContainer.innerHTML = '';
-    for (const categoryName in categories) {
+    categoriesArray.forEach(categoryObj => {
+        const categoryName = categoryObj.name;
+        const threads = categoryObj.threads;
         const categoryDiv = document.createElement('div');
         categoryDiv.classList.add('category');
+        // Create the category header
+        const categoryHeader = document.createElement('div');
+        categoryHeader.classList.add('category-header');
         const categoryTitle = document.createElement('h2');
-        categoryTitle.innerText = getCategoryDisplayName(categoryName);
-        categoryDiv.appendChild(categoryTitle);
-        const threads = categories[categoryName];
-        categoryTitle.innerText += ` (${Object.keys(threads).length})`;
+        categoryTitle.innerText = `${getCategoryDisplayName(categoryName)} (${Object.keys(threads).length})`;
+        categoryHeader.appendChild(categoryTitle);
+        categoryDiv.appendChild(categoryHeader);
+        // Create the threads container and set it to be hidden by default
+        const threadsContainer = document.createElement('div');
+        threadsContainer.classList.add('threads-container');
+        threadsContainer.style.display = 'none'; // Start minimized
+        // Render threads
         for (const threadId in threads) {
             const thread = threads[threadId];
             const threadDiv = document.createElement('div');
@@ -275,14 +296,32 @@ function renderCategories(categories) {
             threadAuthor.innerText = `By: ${thread.author}`;
             const threadReplies = document.createElement('p');
             threadReplies.innerText = `Replies: ${thread.replies.length}`;
+            // Display created and updated times
+            const threadCreated = document.createElement('p');
+            threadCreated.innerText = `Created: ${new Date(thread.created).toLocaleString()}`;
+            threadDiv.appendChild(threadCreated);
+            if (thread.updated && thread.updated !== thread.created) {
+                const threadUpdated = document.createElement('p');
+                threadUpdated.innerText = `Updated: ${new Date(thread.updated).toLocaleString()}`;
+                threadDiv.appendChild(threadUpdated);
+            }
             threadDiv.appendChild(threadTitle);
             threadDiv.appendChild(threadAuthor);
             threadDiv.appendChild(threadReplies);
             threadDiv.addEventListener('click', () => openThread(thread, categoryName));
-            categoryDiv.appendChild(threadDiv);
+            threadsContainer.appendChild(threadDiv);
         }
+        categoryDiv.appendChild(threadsContainer);
         categoriesContainer.appendChild(categoryDiv);
-    }
+        // Add event listener to toggle threadsContainer display
+        categoryHeader.addEventListener('click', () => {
+            if (threadsContainer.style.display === 'none') {
+                threadsContainer.style.display = 'block';
+            } else {
+                threadsContainer.style.display = 'none';
+            }
+        });
+    });
 }
 
 async function fetchMessageContent(name, identifier) {
@@ -348,6 +387,17 @@ function openThread(thread, categoryName) {
     threadAuthor.classList.add('author');
     threadAuthor.innerText = `By: ${thread.author}`;
     modalContent.appendChild(threadAuthor);
+    // Display created and updated times
+    const threadCreated = document.createElement('p');
+    threadCreated.classList.add('timestamp');
+    threadCreated.innerText = `Created: ${new Date(thread.created).toLocaleString()}`;
+    modalContent.appendChild(threadCreated);
+    if (thread.updated && thread.updated !== thread.created) {
+        const threadUpdated = document.createElement('p');
+        threadUpdated.classList.add('timestamp');
+        threadUpdated.innerText = `Updated: ${new Date(thread.updated).toLocaleString()}`;
+        modalContent.appendChild(threadUpdated);
+    }
     // Edit and Delete buttons if user is the author
     if (userName === thread.author) {
         const editBtn = document.createElement('button');
@@ -385,6 +435,18 @@ function openThread(thread, categoryName) {
         replyAuthor.classList.add('author');
         replyAuthor.innerText = `By: ${reply.author}`;
         replyDiv.appendChild(replyAuthor);
+        // Display created and updated times for replies
+        const replyCreated = document.createElement('p');
+        replyCreated.classList.add('timestamp');
+        replyCreated.innerText = `Created: ${new Date(reply.created).toLocaleString()}`;
+        replyDiv.appendChild(replyCreated);
+
+        if (reply.updated && reply.updated !== reply.created) {
+            const replyUpdated = document.createElement('p');
+            replyUpdated.classList.add('timestamp');
+            replyUpdated.innerText = `Updated: ${new Date(reply.updated).toLocaleString()}`;
+            replyDiv.appendChild(replyUpdated);
+        }
         // Edit and Delete buttons for replies
         if (userName === reply.author) {
             const editReplyBtn = document.createElement('button');
@@ -398,7 +460,6 @@ function openThread(thread, categoryName) {
             deleteReplyBtn.addEventListener('click', () => deleteMessage(reply, 'reply', thread));
             replyDiv.appendChild(deleteReplyBtn);
         }
-
         const replyContent = document.createElement('p');
         replyContent.classList.add('message-content');
         replyContent.innerText = reply.content;
