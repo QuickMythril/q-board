@@ -596,7 +596,7 @@ async function submitReply(thread, subject, content) {
             service: "COMMENT",
             identifier: identifier,
             file: messageFile, // Maximum COMMENT size 500 KB
-            category: thread.category ? category : "UNCATEGORIZED",
+            category: thread.category ? thread.category : "UNCATEGORIZED",
             title: subject
         });
         alert('Reply published successfully!  Confirmation may take several minutes.  Progress can be checked in the Wallet plugin under ARBITRARY txs.  Threads may not appear immediately after confirmation.');
