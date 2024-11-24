@@ -118,6 +118,8 @@ async function login() {
 // Function to load all existing messages
 async function loadMessages() {
     dismissLoading(false);
+    let deletedThreads = 0;
+    let deletedReplies = 0;
     try {
         // Get reference to loading feedback element
         const loadingThreads = document.getElementById('loading-threads');
@@ -209,13 +211,19 @@ async function loadMessages() {
                         } else {
                             thread.content = content; // Use original content if parsing fails
                         }
-                        loadedThreads++;
-                        loadingThreads.innerHTML = `${loadedNoneMsg}<br>Loaded ${loadedThreads} of ${totalThreads} threads. Failed: ${failedThreads}`;
+                        // Check if thread is deleted
+                        if (thread.subject.toLowerCase() === 'deleted' || thread.content.toLowerCase() === 'deleted') {
+                            thread.deleted = true;
+                            deletedThreads++;
+                        } else {
+                            loadedThreads++;
+                        }
+                        loadingThreads.innerHTML = `${loadedNoneMsg}<br>Loaded ${loadedThreads} of ${totalThreads} threads. Failed: ${failedThreads}. Deleted: ${deletedThreads}`;
                     })
                     .catch(error => {
                         thread.content = `Error loading content: ${error}`;
                         failedThreads++;
-                        loadingThreads.innerHTML = `${loadedNoneMsg}<br>Loaded ${loadedThreads} of ${totalThreads} threads. Failed: ${failedThreads}`;
+                        loadingThreads.innerHTML = `${loadedNoneMsg}<br>Loaded ${loadedThreads} of ${totalThreads} threads. Failed: ${failedThreads}. Deleted: ${deletedThreads}`;
                     });
                 contentPromises.push(threadContentPromise);
                 // Fetch replies content
@@ -229,13 +237,19 @@ async function loadMessages() {
                             } else {
                                 reply.content = content; // Use original content if parsing fails
                             }
-                            loadedReplies++;
-                            loadingReplies.innerHTML = `Loaded ${loadedReplies} of ${totalReplies} replies. Failed: ${failedReplies}`;
+                            // Check if reply is deleted
+                            if (reply.subject.toLowerCase() === 'deleted' || reply.content.toLowerCase() === 'deleted') {
+                                reply.deleted = true;
+                                deletedReplies++;
+                            } else {
+                                loadedReplies++;
+                            }
+                            loadingReplies.innerHTML = `Loaded ${loadedReplies} of ${totalReplies} replies. Failed: ${failedReplies}. Deleted: ${deletedReplies}`;
                         })
                         .catch(error => {
                             reply.content = `Error loading content: ${error}`;
                             failedReplies++;
-                            loadingReplies.innerHTML = `Loaded ${loadedReplies} of ${totalReplies} replies. Failed: ${failedReplies}`;
+                            loadingReplies.innerHTML = `Loaded ${loadedReplies} of ${totalReplies} replies. Failed: ${failedReplies}. Deleted: ${deletedReplies}`;
                         });
                     contentPromises.push(replyContentPromise);
                 }
@@ -272,13 +286,16 @@ function renderCategories(categoriesArray) {
     categoriesArray.forEach(categoryObj => {
         const categoryName = categoryObj.name;
         const threads = categoryObj.threads;
+        // Calculate the count of non-deleted threads
+        const nonDeletedThreadsCount = Object.values(threads).filter(thread => !thread.deleted).length;
         const categoryDiv = document.createElement('div');
         categoryDiv.classList.add('category');
         // Create the category header
         const categoryHeader = document.createElement('div');
         categoryHeader.classList.add('category-header');
         const categoryTitle = document.createElement('h2');
-        categoryTitle.innerText = `${getCategoryDisplayName(categoryName)} (${Object.keys(threads).length})`;
+        // Use the correct count of non-deleted threads
+        categoryTitle.innerText = `${getCategoryDisplayName(categoryName)} (${nonDeletedThreadsCount})`;
         categoryHeader.appendChild(categoryTitle);
         categoryDiv.appendChild(categoryHeader);
         // Create the threads container and set it to be hidden by default
@@ -288,14 +305,17 @@ function renderCategories(categoriesArray) {
         // Render threads
         for (const threadId in threads) {
             const thread = threads[threadId];
+            // Skip deleted threads
+            if (thread.deleted) continue;
             const threadDiv = document.createElement('div');
             threadDiv.classList.add('thread');
             const threadTitle = document.createElement('h3');
             threadTitle.innerText = thread.subject;
             const threadAuthor = document.createElement('p');
             threadAuthor.innerText = `By: ${thread.author}`;
+            const visibleRepliesCount = thread.replies.filter(reply => !reply.deleted).length;
             const threadReplies = document.createElement('p');
-            threadReplies.innerText = `Replies: ${thread.replies.length}`;
+            threadReplies.innerText = `Replies: ${visibleRepliesCount}`;
             // Display created and updated times
             const threadCreated = document.createElement('p');
             threadCreated.innerText = `Created: ${new Date(thread.created).toLocaleString()}`;
@@ -414,10 +434,11 @@ function openThread(thread, categoryName) {
     // Thread content
     const threadContent = document.createElement('p');
     threadContent.classList.add('message-content');
-    threadContent.innerText = thread.content;
+    threadContent.innerHTML = processQortalLinks(escapeHtml(thread.content));
     modalContent.appendChild(threadContent);
-    // Replies section
-    if (thread.replies.length > 0) {
+    // Display replies
+    const nonDeletedReplies = thread.replies.filter(reply => !reply.deleted);
+    if (nonDeletedReplies.length > 0) {
         const repliesTitle = document.createElement('h4');
         repliesTitle.innerText = 'Replies:';
         modalContent.appendChild(repliesTitle);
@@ -426,8 +447,8 @@ function openThread(thread, categoryName) {
         noRepliesTitle.innerText = 'No Replies';
         modalContent.appendChild(noRepliesTitle);
     }
-    // Display replies
-    thread.replies.forEach(reply => {
+    // Display non-deleted replies
+    nonDeletedReplies.forEach(reply => {
         const replyDiv = document.createElement('div');
         replyDiv.classList.add('message');
 
@@ -460,9 +481,10 @@ function openThread(thread, categoryName) {
             deleteReplyBtn.addEventListener('click', () => deleteMessage(reply, 'reply', thread));
             replyDiv.appendChild(deleteReplyBtn);
         }
+        // Reply content
         const replyContent = document.createElement('p');
         replyContent.classList.add('message-content');
-        replyContent.innerText = reply.content;
+        replyContent.innerHTML = processQortalLinks(escapeHtml(reply.content));
         replyDiv.appendChild(replyContent);
 
         modalContent.appendChild(replyDiv);
@@ -749,6 +771,97 @@ function incrementIdentifier(identifier) {
         return newIdentifier.substring(0, 64);
     }
     return newIdentifier;
+}
+
+function processQortalLinks(text) {
+    // Use a regular expression to find qortal:// links
+    return text.replace(/qortal:\/\/[^\s<>"']+/g, function(match) {
+        const displayText = escapeHtml(match);
+        const encodedLink = encodeURIComponent(match);
+        // Extract the service, name, and identifier
+        const path = match.substring('qortal://'.length);
+        const parts = path.split('/');
+        const service = parts[0];
+        const name = parts[1];
+        const identifier = parts.slice(2).join('/'); // In case identifier contains slashes
+        // Handle 'use-group/action-join/groupid-XXX' links
+        if (service === 'use-group' && name === 'action-join') {
+            return `<a href="#" style="color: dodgerblue; text-decoration: underline;" onclick="joinGroup('${encodedLink}'); return false;">${displayText}</a>`;
+        }
+        // For APP and WEBSITE service types
+        else if (service === 'APP' || service === 'WEBSITE') {
+            return `<a href="#" style="color: dodgerblue; text-decoration: underline;" onclick="openQortalLink('${encodedLink}'); return false;">${displayText}</a>`;
+        }
+        // For embeddable service types
+        else if (['THUMBNAIL', 'QCHAT_IMAGE', 'IMAGE', 'VIDEO', 'AUDIO', 'QCHAT_AUDIO', 'VOICE', 'BLOG', 'BLOG_POST', 'BLOG_COMMENT', 'DOCUMENT'].includes(service)) {
+            const url = `/arbitrary/${service}/${name}/${identifier}`;
+            // Decide how to embed based on service type
+            if (['IMAGE', 'THUMBNAIL', 'QCHAT_IMAGE'].includes(service)) {
+                return `<img src="${url}" alt="${displayText}">`;
+            } else if (['VIDEO'].includes(service)) {
+                return `<video controls src="${url}"></video>`;
+            } else if (['AUDIO', 'QCHAT_AUDIO', 'VOICE'].includes(service)) {
+                return `<audio controls src="${url}"></audio>`;
+            } else {
+                return `<a href="#" onclick="openQortalLink('${encodedLink}'); return false;">${displayText}</a>`;
+            }
+        } else {
+            // Default action for other service types
+            return `<a href="#" style="color: dodgerblue; text-decoration: underline;" onclick="openQortalLink('${encodedLink}'); return false;">${displayText}</a>`;
+        }
+    });
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function openQortalLink(encodedQortalLink) {
+    const qortalLink = decodeURIComponent(encodedQortalLink);
+    qortalRequest({
+        action: 'OPEN_NEW_TAB',
+        qortalLink: qortalLink
+    }).then(response => {
+        // Optionally handle the response
+    }).catch(error => {
+        console.error('Error opening Qortal link:', error);
+    });
+}
+
+function joinGroup(encodedQortalLink) {
+    const qortalLink = decodeURIComponent(encodedQortalLink);
+    const path = qortalLink.substring('qortal://'.length);
+    const parts = path.split('/');
+    const service = parts[0]; // Should be 'use-group'
+    const action = parts[1];  // Should be 'action-join'
+    const groupIdPart = parts[2]; // Should be 'groupid-XXX'
+    // Extract groupId from 'groupid-XXX'
+    const groupIdMatch = groupIdPart.match(/groupid-(\d+)/);
+    if (groupIdMatch && groupIdMatch[1]) {
+        const groupId = parseInt(groupIdMatch[1], 10);
+        // Call the JOIN_GROUP action
+        qortalRequest({
+            action: "JOIN_GROUP",
+            groupId: groupId
+        }).then(response => {
+            if (response === true || (response && !response.error)) {
+                alert(`Successfully joined group ${groupId}.`);
+            } else {
+                console.error('Error joining group:', response);
+                alert('Error joining group. Please try again.');
+            }
+        }).catch(error => {
+            console.error('Error joining group:', error);
+            alert('Error joining group. Please try again.');
+        });
+    } else {
+        alert('Invalid group link.');
+    }
 }
 
 // Initialize the app on page load

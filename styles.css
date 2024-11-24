@@ -85,13 +85,18 @@ h1 {
 }
 
 .close {
+    position: absolute;
+    top: 10px;
+    right: 20px;
     color: #ffffff; /* White text */
-    float: right;
-    font-size: 28px;
+    font-size: 48px;
     font-weight: bold;
     cursor: pointer;
 }
 
+.close:hover {
+    color: #cc0000;
+}
 .thread {
     background-color: #1b263b; /* Match header background */
     padding: 10px;
@@ -112,6 +117,7 @@ h1 {
     padding: 10px;
     margin: 10px 0;
     border-radius: 5px;
+    overflow: hidden; /* Ensure content doesn't overflow */
 }
 
 .message .author {
@@ -120,27 +126,50 @@ h1 {
 
 .message-content {
     white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .modal {
-    display: none; 
-    position: fixed; 
-    z-index: 1; 
-    padding-top: 100px; 
+    display: none;
+    position: fixed;
+    z-index: 1;
     left: 0;
     top: 0;
-    width: 100%; 
-    height: 100%; 
-    overflow: auto; 
-    background-color: rgba(0,0,0,0.4); 
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Prevent content from overflowing the modal */
+    background-color: rgba(0,0,0,0.4);
+    display: flex; /* Use Flexbox for centering */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    padding: 0; /* Remove padding that could cause overflow */
 }
 
 .modal-content {
     background-color: #0d1b2a; /* Match body background */
-    margin: auto;
     padding: 20px;
     border: 1px solid #1e90ff; /* Dodgerblue */
-    width: 80%;
+    width: 90%;
+    max-height: 90vh; /* Set maximum height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    box-sizing: border-box; /* Include padding and border in width and height calculations */
+    position: relative; /* For positioning the close button */
+}
+
+.modal-content p,
+.modal-content h3,
+.modal-content h4 {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.modal-content img,
+.modal-content video,
+.modal-content audio {
+    max-width: 100%;
+    height: auto;
 }
 
 .modal-content button {
